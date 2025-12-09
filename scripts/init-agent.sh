@@ -8,7 +8,7 @@ echo "🤖 Creating new agent: $AGENT_NAME"
 echo ""
 
 # Create agent file
-AGENT_FILE="agents/${AGENT_NAME}.md"
+AGENT_FILE=".claude/agents/${AGENT_NAME}.md"
 
 if [[ -f "$AGENT_FILE" ]]; then
     echo "❌ Agent already exists: $AGENT_FILE"

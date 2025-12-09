@@ -97,9 +97,9 @@ def discover_agent_file() -> Path:
 
     Precedence:
     1. AGENT_FILE_PATH (explicit path)
-    2. agents/{AGENT_NAME}.md
-    3. Auto-detect single .md file in agents/
-    4. Fallback to agents/default.md
+    2. .claude/agents/{AGENT_NAME}.md
+    3. Auto-detect single .md file in .claude/agents/
+    4. Fallback to .claude/agents/default.md
     """
     base_dir = Path(__file__).resolve().parent.parent
 
@@ -115,13 +115,13 @@ def discover_agent_file() -> Path:
 
     # 2. Agent name
     if settings.agent_name:
-        path = base_dir / "agents" / f"{settings.agent_name}.md"
+        path = base_dir / ".claude" / "agents" / f"{settings.agent_name}.md"
         if path.exists():
             log_event("agent_discovery", method="agent_name", path=str(path))
             return path
 
-    # 3. Auto-detect single .md file in agents/
-    agents_dir = base_dir / "agents"
+    # 3. Auto-detect single .md file in .claude/agents/
+    agents_dir = base_dir / ".claude" / "agents"
     if agents_dir.exists():
         md_files = list(agents_dir.glob("*.md"))
         # Exclude README.md from auto-detection
@@ -137,13 +137,13 @@ def discover_agent_file() -> Path:
             )
 
     # 4. Fallback to default.md
-    default_path = base_dir / "agents" / "default.md"
+    default_path = base_dir / ".claude" / "agents" / "default.md"
     if default_path.exists():
         log_event("agent_discovery", method="fallback_default", path=str(default_path))
         return default_path
 
     raise FileNotFoundError(
-        "No agent file found. Create agents/default.md or set AGENT_NAME/AGENT_FILE_PATH."
+        "No agent file found. Create .claude/agents/default.md or set AGENT_NAME/AGENT_FILE_PATH."
     )
 
 
@@ -180,23 +180,10 @@ class AgentExecutor:
 
         return mcp_servers
 
-    async def execute(self, payload: Dict[str, Any], request_id: str) -> str:
-        """Execute agent with the given payload.
+    def _build_options(self) -> ClaudeAgentOptions:
+        """Compose Claude agent options."""
 
-        Args:
-            payload: User input data
-            request_id: Unique request identifier for logging
-
-        Returns:
-            Agent's text response
-        """
-        log_event("agent_start", request_id=request_id, agent=self.config.name)
-
-        # Build user message from payload
-        user_message = self._format_payload(payload)
-
-        # Configure agent options
-        opts = ClaudeAgentOptions(
+        return ClaudeAgentOptions(
             model=self.model,
             system_prompt=self.config.system_prompt,
             permission_mode=settings.permission_mode,
@@ -204,22 +191,26 @@ class AgentExecutor:
             allowed_tools=self.config.allowed_tools if self.config.allowed_tools else None,
         )
 
-        collected_text: list[str] = []
+    async def stream_execute(self, payload: Dict[str, Any], request_id: str, *, log_success: bool = True):
+        """Async generator yielding text chunks for streaming responses."""
+
+        log_event("agent_start", request_id=request_id, agent=self.config.name)
+        user_message = self._format_payload(payload)
+        opts = self._build_options()
 
         try:
-            # Stream agent execution
             async for msg in query(prompt=user_message, options=opts):
                 if isinstance(msg, AssistantMessage):
                     for block in msg.content:
                         if isinstance(block, TextBlock):
                             text = block.text
-                            collected_text.append(text)
                             log_event(
                                 "agent_chunk",
                                 request_id=request_id,
                                 chunk=text[:500],
                                 truncated=len(text) > 500,
                             )
+                            yield text
                         elif isinstance(block, ToolUseBlock):
                             log_event(
                                 "agent_tool_use",
@@ -228,12 +219,7 @@ class AgentExecutor:
                                 input=block.input,
                             )
                 else:
-                    # Log other message types for debugging
-                    log_event("agent_event", request_id=request_id, msg_type=type(msg).__name__)
-
-            result = "".join(collected_text)
-            log_event("agent_success", request_id=request_id, result_length=len(result))
-            return result
+            log_event("agent_event", request_id=request_id, msg_type=type(msg).__name__)
 
         except Exception as e:
             log_event(
@@ -243,6 +229,21 @@ class AgentExecutor:
                 error_type=type(e).__name__,
             )
             raise
+        finally:
+            if log_success:
+                # result length is calculated by caller when buffering; keep None for streaming
+                log_event("agent_success", request_id=request_id, result_length=None)
+
+    async def execute(self, payload: Dict[str, Any], request_id: str) -> str:
+        """Execute agent and return concatenated text (non-streaming)."""
+
+        collected_text: list[str] = []
+        async for chunk in self.stream_execute(payload, request_id, log_success=False):
+            collected_text.append(chunk)
+
+        result = "".join(collected_text)
+        log_event("agent_success", request_id=request_id, result_length=len(result))
+        return result
 
     def _format_payload(self, payload: Dict[str, Any]) -> str:
         """Format payload as JSON for the agent."""

@@ -112,10 +112,10 @@ Expected output:
 
 The boilerplate discovers agents in this order:
 
-1. **Explicit path**: `AGENT_FILE_PATH=/app/agents/my-agent.md`
-2. **Agent name**: `AGENT_NAME=my-agent` → loads `agents/my-agent.md`
-3. **Auto-detect**: Single `.md` file in `agents/` directory
-4. **Fallback**: `agents/default.md`
+1. **Explicit path**: `AGENT_FILE_PATH=/app/.claude/agents/my-agent.md`
+2. **Agent name**: `AGENT_NAME=my-agent` → loads `.claude/agents/my-agent.md`
+3. **Auto-detect**: Single `.md` file in `.claude/agents/` directory
+4. **Fallback**: `.claude/agents/default.md`
 
 ## Creating a New Agent
 
@@ -126,8 +126,8 @@ The boilerplate discovers agents in this order:
 
 ### Method 2: Manual creation
 ```bash
-cp agents/default.md agents/my-agent.md
-# Edit agents/my-agent.md
+cp .claude/agents/default.md .claude/agents/my-agent.md
+# Edit .claude/agents/my-agent.md
 # Set environment: AGENT_NAME=my-agent
 ```
 
@@ -148,7 +148,7 @@ See the `examples/` directory for complete working examples:
 ## Troubleshooting
 
 **Agent not found:**
-- Check file exists in `agents/` directory
+- Check file exists in `.claude/agents/` directory
 - Verify `AGENT_NAME` or `AGENT_FILE_PATH` is correct
 - Check logs for discovery method used
 

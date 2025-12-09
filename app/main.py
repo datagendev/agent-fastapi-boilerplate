@@ -5,7 +5,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.agent import agent_executor, log_event
 from app.config import settings
@@ -155,6 +155,61 @@ async def run_agent(
         request_id=request_id,
         message=f"Agent '{agent_executor.config.name}' is processing your request",
     )
+
+
+@app.post("/run/sync", response_model=RunResponse)
+async def run_agent_sync(
+    request: RunRequest,
+    req: Request,
+    _: None = Depends(verify_api_key),
+):
+    """Execute agent synchronously and return the full result."""
+
+    request_id = req.state.request_id
+    try:
+        result = await agent_executor.execute(request.payload, request_id)
+        return RunResponse(
+            status="completed",
+            request_id=request_id,
+            message=f"Agent '{agent_executor.config.name}' completed",
+            result=result,
+        )
+    except Exception as e:
+        log_event(
+            "agent_sync_error",
+            request_id=request_id,
+            error=str(e),
+            error_type=type(e).__name__,
+        )
+        raise HTTPException(status_code=500, detail="Agent execution failed")
+
+
+@app.post("/run/stream")
+async def run_agent_stream(
+    request: RunRequest,
+    req: Request,
+    _: None = Depends(verify_api_key),
+):
+    """Execute agent and stream the result as server-sent events (SSE)."""
+
+    request_id = req.state.request_id
+
+    async def event_generator():
+        try:
+            async for chunk in agent_executor.stream_execute(request.payload, request_id):
+                yield f"data: {chunk}\n\n"
+            yield "event: done\ndata: [DONE]\n\n"
+        except Exception as e:
+            log_event(
+                "agent_stream_error",
+                request_id=request_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            yield f"event: error\ndata: {str(e)}\n\n"
+
+    headers = {"X-Request-ID": request_id}
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers=headers)
 
 
 @app.get("/health", response_model=HealthResponse)

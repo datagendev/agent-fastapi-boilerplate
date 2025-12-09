@@ -6,7 +6,7 @@ Get from clone to deployed in **5 minutes**.
 
 - Python 3.13+
 - Anthropic API key ([Get one here](https://console.anthropic.com/settings/keys))
-- Railway CLI (optional, for deployment)
+- Railway CLI for deployment ([Installation guide](https://docs.railway.com/guides/cli))
 
 ## Step 1: Clone and Setup (1 min)
 
@@ -31,14 +31,13 @@ AGENT_NAME=default
 ### Option A: Use an Example Agent
 
 ```bash
-# Use the enrichment agent example
-cp examples/enrichment/agent.md agents/enrichment.md
+# Use the email drafter example
+cp examples/email-drafter/agent.md .claude/agents/email-drafter.md
 ```
 
 Then update `.env`:
 ```bash
-AGENT_NAME=enrichment
-DATAGEN_API_KEY=dgn_your-key-here  # Required for enrichment agent
+AGENT_NAME=email-drafter
 ```
 
 ### Option B: Use the Default Agent
@@ -49,7 +48,7 @@ The default agent is already set up. No changes needed!
 
 ```bash
 ./scripts/init-agent.sh my-custom-agent
-# Edit agents/my-custom-agent.md
+# Edit .claude/agents/my-custom-agent.md
 ```
 
 Then update `.env`:
@@ -77,16 +76,29 @@ You should see:
 
 ## Step 4: Deploy to Railway (2 min)
 
+### Install Railway CLI
+
+Choose one installation method ([See all options](https://docs.railway.com/guides/cli)):
+
 ```bash
-# Install Railway CLI (if not already installed)
+# Homebrew (macOS)
+brew install railway
+
+# npm (all platforms - requires Node.js)
 npm i -g @railway/cli
 
-# Deploy
+# Shell script (macOS, Linux, WSL)
+bash <(curl -fsSL cli.new)
+```
+
+### Deploy
+
+```bash
 ./scripts/deploy.sh
 ```
 
-The script will:
-1. Check prerequisites
+The interactive script will:
+1. Check prerequisites (Railway CLI installed)
 2. Create/link Railway project
 3. Upload environment variables from `.env`
 4. Deploy your agent
@@ -95,13 +107,13 @@ The script will:
 
 ```bash
 # Get your deployment URL
-railway domain
+URL=$(railway domain)
 
 # Test the health endpoint
-curl https://your-app.railway.app/health
+curl $URL/health
 
 # Test agent execution
-curl -X POST https://your-app.railway.app/run \
+curl -X POST $URL/run \
   -H "Content-Type: application/json" \
   -d '{"payload": {"text": "Hello, deployed agent!"}}'
 ```
@@ -109,6 +121,8 @@ curl -X POST https://your-app.railway.app/run \
 ## That's It! 🎉
 
 Your agent is now deployed and ready to use.
+
+> 📘 **Need more help?** See [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md) for detailed Railway deployment guide, troubleshooting, and advanced usage.
 
 ## Next Steps
 
@@ -124,7 +138,7 @@ railway open
 
 ### Customize Your Agent
 
-1. Edit your agent file: `agents/your-agent.md`
+1. Edit your agent file: `.claude/agents/your-agent.md`
 2. Test locally: `./scripts/test-local.sh`
 3. Redeploy: `./scripts/deploy.sh`
 
@@ -175,12 +189,12 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 
 Check that your agent file exists:
 ```bash
-ls agents/
+ls .claude/agents/
 ```
 
 Make sure `AGENT_NAME` in `.env` matches the filename (without `.md`):
 ```bash
-AGENT_NAME=my-agent  # Loads agents/my-agent.md
+AGENT_NAME=my-agent  # Loads .claude/agents/my-agent.md
 ```
 
 ### "Railway CLI not found"
@@ -221,7 +235,7 @@ curl -X POST https://your-app.railway.app/run \
 Create an agent with your specific instructions:
 ```bash
 ./scripts/init-agent.sh my-workflow
-# Edit agents/my-workflow.md
+# Edit .claude/agents/my-workflow.md
 AGENT_NAME=my-workflow ./scripts/test-local.sh
 ```
 
@@ -229,7 +243,7 @@ AGENT_NAME=my-workflow ./scripts/test-local.sh
 
 For detailed documentation, see [README.md](README.md).
 
-For agent writing guide, see [agents/README.md](agents/README.md).
+For agent writing guide, see [.claude/agents/README.md](.claude/agents/README.md).
 
 ## Need Help?
 

@@ -26,8 +26,10 @@ class RunResponse(BaseModel):
     )
     request_id: str = Field(..., description="Unique request identifier")
     message: str = Field(..., description="Human-readable status message")
-    result: Optional[Dict[str, Any]] = Field(
-        default=None, description="Agent execution result (if completed synchronously)"
+    result: Optional[Any] = Field(
+        default=None,
+        description="Agent execution result (synchronous calls) or error payload",
+        examples=["Finished composing email", {"text": "..."}],
     )
 
 

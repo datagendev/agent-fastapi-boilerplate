@@ -24,7 +24,7 @@ cp .env.example .env
 # Edit .env: Add ANTHROPIC_API_KEY
 
 # 2. Add your agent
-cp examples/enrichment/agent.md agents/my-agent.md
+cp examples/email-drafter/agent.md .claude/agents/my-agent.md
 # Or: ./scripts/init-agent.sh my-agent
 
 # 3. Test locally
@@ -59,12 +59,12 @@ agent-fastapi-boilerplate/
 │   ├── config.py        # Configuration management
 │   ├── agent.py         # Agent loading & execution
 │   └── models.py        # Pydantic schemas
-├── agents/
+├── .claude/agents/
 │   ├── default.md       # Default agent
 │   └── README.md        # Agent documentation
 ├── examples/
-│   ├── enrichment/      # LinkedIn enrichment example
-│   └── email-drafter/   # Email drafting example
+│   ├── poem-email-drafter/  # Simple Gmail poem drafter (great for beginners!)
+│   └── email-drafter/       # Email drafting example
 ├── scripts/
 │   ├── deploy.sh        # Deploy to Railway
 │   ├── init-agent.sh    # Create new agent
@@ -123,8 +123,8 @@ Create a `.env` file with the following variables:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `AGENT_NAME` | Agent name (loads `agents/{AGENT_NAME}.md`) | `default` |
-| `AGENT_FILE_PATH` | Explicit path to agent file | `/app/agents/my-agent.md` |
+| `AGENT_NAME` | Agent name (loads `.claude/agents/{AGENT_NAME}.md`) | `default` |
+| `AGENT_FILE_PATH` | Explicit path to agent file | `/app/.claude/agents/my-agent.md` |
 
 #### Optional
 
@@ -141,10 +141,10 @@ Create a `.env` file with the following variables:
 
 The boilerplate discovers agents in this order:
 
-1. **Explicit path**: `AGENT_FILE_PATH=/app/agents/my-agent.md`
-2. **Agent name**: `AGENT_NAME=enrichment` → loads `agents/enrichment.md`
-3. **Auto-detect**: Single `.md` file in `agents/` directory (excludes README.md)
-4. **Fallback**: `agents/default.md`
+1. **Explicit path**: `AGENT_FILE_PATH=/app/.claude/agents/my-agent.md`
+2. **Agent name**: `AGENT_NAME=email-drafter` → loads `.claude/agents/email-drafter.md`
+3. **Auto-detect**: Single `.md` file in `.claude/agents/` directory (excludes README.md)
+4. **Fallback**: `.claude/agents/default.md`
 
 ## Agent Format
 
@@ -173,13 +173,13 @@ Plain markdown without frontmatter:
 You are a helpful assistant that processes data...
 ```
 
-See [agents/README.md](agents/README.md) for detailed documentation on writing agents.
+See [.claude/agents/README.md](.claude/agents/README.md) for detailed documentation on writing agents.
 
 ## API Endpoints
 
 ### `POST /run`
 
-Execute agent with JSON payload.
+Queue agent execution in the background.
 
 **Request:**
 ```bash
@@ -189,7 +189,7 @@ curl -X POST http://localhost:8000/run \
   -d '{"payload": {"email": "user@example.com"}}'
 ```
 
-**Response:**
+**Response (queued):**
 ```json
 {
   "status": "queued",
@@ -197,6 +197,38 @@ curl -X POST http://localhost:8000/run \
   "message": "Agent 'default' is processing your request"
 }
 ```
+
+### `POST /run/sync`
+
+Waits for completion and returns the full text result.
+
+```bash
+curl -X POST http://localhost:8000/run/sync \
+  -H "Content-Type: application/json" \
+  -d '{"payload": {"text": "Hello"}}'
+```
+
+**Response (completed):**
+```json
+{
+  "status": "completed",
+  "request_id": "abc-123-def",
+  "message": "Agent 'default' completed",
+  "result": "...full agent output..."
+}
+```
+
+### `POST /run/stream`
+
+Streams results via Server-Sent Events (SSE).
+
+```bash
+curl -N -X POST http://localhost:8000/run/stream \
+  -H "Content-Type: application/json" \
+  -d '{"payload": {"text": "stream me"}}'
+```
+
+Each chunk arrives as `data: <text>\n\n`; completion emits `event: done`.
 
 ### `GET /health`
 
@@ -257,44 +289,90 @@ curl -X POST http://localhost:8000/run \
 ./scripts/init-agent.sh my-new-agent
 
 # Or manually
-cp agents/default.md agents/my-new-agent.md
-# Edit agents/my-new-agent.md
+cp .claude/agents/default.md .claude/agents/my-new-agent.md
+# Edit .claude/agents/my-new-agent.md
 ```
 
 ## Deployment
 
-### Deploy to Railway
+> 📘 **Complete Railway Guide:** See [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md) for detailed deployment instructions, troubleshooting, and best practices.
+
+### Prerequisites
+
+Install Railway CLI ([Official Docs](https://docs.railway.com/guides/cli)):
 
 ```bash
-# One-command deployment
+# Homebrew (macOS)
+brew install railway
+
+# npm (all platforms)
+npm i -g @railway/cli
+
+# Shell script (macOS, Linux, WSL)
+bash <(curl -fsSL cli.new)
+
+# Scoop (Windows)
+scoop install railway
+```
+
+### Quick Deploy
+
+```bash
+# One-command deployment (recommended)
 ./scripts/deploy.sh
 ```
 
-This script will:
-1. Check Railway CLI is installed
-2. Validate `.env` file exists
-3. Initialize Railway project (if needed)
-4. Upload environment variables
-5. Deploy using Dockerfile
+The script will:
+1. ✅ Check Railway CLI is installed and authenticated
+2. ✅ Validate `.env` file exists with required variables
+3. ✅ Authenticate with Railway (if needed)
+4. ✅ Create new project OR link to existing project
+5. ✅ Upload environment variables from `.env`
+6. ✅ Deploy using Dockerfile
+7. ✅ Provide next steps and testing commands
 
 ### Manual Deployment
 
-```bash
-# Install Railway CLI
-npm i -g @railway/cli
+If you prefer manual control:
 
-# Login
+```bash
+# 1. Authenticate
 railway login
 
-# Link or create project
+# 2. Create new project
 railway init
+# Or link to existing project
+railway link
 
-# Set environment variables
+# 3. Set environment variables (option A: one by one)
 railway variables set ANTHROPIC_API_KEY=sk-ant-...
 railway variables set AGENT_NAME=default
+railway variables set DATAGEN_API_KEY=dgn_...
 
-# Deploy
-railway up
+# Or (option B: from .env file)
+# See scripts/deploy.sh for automated approach
+
+# 4. Deploy
+railway up --detach
+
+# 5. Get deployment URL
+railway domain
+```
+
+### Railway Environments
+
+Railway supports multiple environments (production, staging, etc.):
+
+```bash
+# List environments
+railway environment
+
+# Switch environment
+railway environment
+# Follow prompts to select environment
+
+# Deploy to specific environment
+railway up --detach
 ```
 
 ### Post-Deployment
@@ -303,26 +381,71 @@ railway up
 # View logs
 railway logs --follow
 
+# Check deployment status
+railway status
+
 # Get deployment URL
 railway domain
 
 # Open Railway dashboard
 railway open
+
+# SSH into your container (for debugging)
+railway ssh
 ```
+
+### Railway CLI Reference
+
+Common commands you'll use:
+
+| Command | Description |
+|---------|-------------|
+| `railway login` | Authenticate with Railway |
+| `railway whoami` | Check current user |
+| `railway init` | Create new project |
+| `railway link` | Link to existing project |
+| `railway up` | Deploy your code |
+| `railway up --detach` | Deploy without blocking |
+| `railway status` | Check project status |
+| `railway logs` | View deployment logs |
+| `railway logs --follow` | Stream logs in real-time |
+| `railway domain` | Get deployment URL |
+| `railway open` | Open Railway dashboard |
+| `railway environment` | Switch environments |
+| `railway variables` | List environment variables |
+| `railway variables set KEY=value` | Set environment variable |
+| `railway ssh` | SSH into running container |
+| `railway run <cmd>` | Run command with Railway env vars |
+| `railway shell` | Open shell with Railway env vars |
+
+**Documentation:** https://docs.railway.com/guides/cli
 
 ## Examples
 
-### Example 1: Enrichment Agent
+### Example 1: Poem Email Drafter (Simple Gmail Agent)
 
-See [examples/enrichment/](examples/enrichment/)
+See [examples/poem-email-drafter/](examples/poem-email-drafter/)
 
-Finds LinkedIn profiles from signup emails.
+Creates Gmail draft emails with poems about any topic. Perfect for learning the basics!
 
+**What it does:**
+- Takes webhook with `{topic: "sunset"}`
+- Composes creative poem (8-16 lines)
+- Creates Gmail draft via DataGen MCP
+
+**Setup:**
 ```bash
-cp examples/enrichment/agent.md agents/enrichment.md
-cp examples/enrichment/.env.example .env
+cp examples/poem-email-drafter/agent.md .claude/agents/poem-email-drafter.md
+cp .env.example .env
 # Edit .env: Add ANTHROPIC_API_KEY and DATAGEN_API_KEY
-AGENT_NAME=enrichment ./scripts/test-local.sh
+AGENT_NAME=poem-email-drafter ./scripts/test-local.sh
+```
+
+**Usage:**
+```bash
+curl -X POST http://localhost:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"payload": {"topic": "winter morning"}}'
 ```
 
 ### Example 2: Email Drafter
@@ -332,9 +455,9 @@ See [examples/email-drafter/](examples/email-drafter/)
 Drafts personalized re-engagement emails.
 
 ```bash
-cp examples/email-drafter/agent.md agents/email-drafter.md
-cp examples/email-drafter/.env.example .env
-# Edit .env: Add ANTHROPIC_API_KEY and DATAGEN_API_KEY
+cp examples/email-drafter/agent.md .claude/agents/email-drafter.md
+cp .env.example .env
+# Edit .env: Add ANTHROPIC_API_KEY
 AGENT_NAME=email-drafter ./scripts/test-local.sh
 ```
 
@@ -394,7 +517,7 @@ async def custom_middleware(request: Request, call_next):
 **Error:** `FileNotFoundError: No agent file found`
 
 **Solution:**
-- Ensure `agents/default.md` exists or set `AGENT_NAME`
+- Ensure `.claude/agents/default.md` exists or set `AGENT_NAME`
 - Check file path is correct
 - Review logs for discovery method used
 
@@ -445,11 +568,11 @@ agent-fastapi-boilerplate/
 │   ├── config.py            # Configuration (env vars)
 │   ├── agent.py             # Agent loading & execution
 │   └── models.py            # Pydantic schemas
-├── agents/                   # Agent definitions
+├── .claude/agents/                   # Agent definitions
 │   ├── default.md           # Default agent
 │   └── README.md            # Agent documentation
 ├── examples/                 # Example agents
-│   ├── enrichment/
+│   ├── email-drafter/
 │   └── email-drafter/
 ├── scripts/                  # Deployment scripts
 │   ├── deploy.sh            # Deploy to Railway
@@ -482,7 +605,7 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-- **Documentation**: See [agents/README.md](agents/README.md) for agent writing guide
+- **Documentation**: See [.claude/agents/README.md](.claude/agents/README.md) for agent writing guide
 - **Examples**: Check [examples/](examples/) for working examples
 - **Issues**: Report bugs or request features via GitHub Issues
 

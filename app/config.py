@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # Agent selection (optional)
     agent_name: Optional[str] = Field(
-        default="default", description="Name of agent to load from agents/ directory"
+        default="default", description="Name of agent to load from .claude/agents/ directory"
     )
     agent_file_path: Optional[Path] = Field(
         default=None, description="Explicit path to agent.md file (overrides agent_name)"
