@@ -89,6 +89,13 @@ agent-fastapi-boilerplate/
 - Python 3.13+
 - Railway CLI (for deployment)
 - Anthropic API key
+- Claude desktop with Claude Code enabled (for MCP): install via  
+  ```bash
+  curl -fsSL https://claude.ai/install.sh | bash
+  ```  
+  then turn on **Claude Code** under Settings → Developer.
+- DataGen MCP access (needed for DataGen-backed agents like email-drafter): get `DATAGEN_API_KEY` at https://datagen.dev/account?tab=api and add the MCP server in Claude Code with  
+  `claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"`
 
 ### Setup
 
@@ -454,10 +461,27 @@ See [examples/email-drafter/](examples/email-drafter/)
 
 Drafts personalized re-engagement emails.
 
+**Prerequisite:** Add the DataGen MCP server in Claude Code and set `DATAGEN_API_KEY`. Without this, the agent cannot call the database tools it needs.
+
+Add DataGen MCP in Claude Code:
+```bash
+# Get your API key from https://datagen.dev/account?tab=api
+export DATAGEN_API_KEY=your-datagen-key
+
+# Register the MCP server
+claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"
+
+# Verify it shows up
+claude mcp list
+```
+
+You should see DataGen tools like `mcp_Neon_run_sql` available. If you prefer the UI flow, use Claude Code Settings → Developer → MCP Servers → Add MCP Server and match the values above.  
+![Add DataGen MCP](instruction/add-mcp.png)
+
 ```bash
 cp examples/email-drafter/agent.md .claude/agents/email-drafter.md
 cp .env.example .env
-# Edit .env: Add ANTHROPIC_API_KEY
+# Edit .env: Add ANTHROPIC_API_KEY and DATAGEN_API_KEY
 AGENT_NAME=email-drafter ./scripts/test-local.sh
 ```
 

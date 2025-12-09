@@ -6,9 +6,17 @@ Get from clone to deployed in **5 minutes**.
 
 - Python 3.13+
 - Anthropic API key ([Get one here](https://console.anthropic.com/settings/keys))
+- Claude Code (desktop) with Claude Code enabled:  
+  ```bash
+  curl -fsSL https://claude.ai/install.sh | bash
+  ```
 - Railway CLI for deployment ([Installation guide](https://docs.railway.com/guides/cli))
+- DataGen MCP access (for the poem email drafter example):
+  - Get `DATAGEN_API_KEY` at https://datagen.dev/account?tab=api
+  - Add the MCP server in Claude Code:  
+    `claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"`
 
-## Step 1: Clone and Setup (1 min)
+## Step 1: Clone and Setup
 
 ```bash
 # Clone the repository (replace with your repo URL)
@@ -23,40 +31,50 @@ cp .env.example .env
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
-AGENT_NAME=default
+DATAGEN_API_KEY=your-datagen-key  # required for DataGen MCP tools
+AGENT_NAME=poem-email-drafter
 ```
 
-## Step 2: Choose or Create an Agent (1 min)
-
-### Option A: Use an Example Agent
+## Step 2: Add the Poem Email Drafter Agent
 
 ```bash
-# Use the email drafter example
-cp examples/email-drafter/agent.md .claude/agents/email-drafter.md
+cp examples/poem-email-drafter/agent.md .claude/agents/poem-email-drafter.md
 ```
 
-Then update `.env`:
+Update `.env`:
 ```bash
-AGENT_NAME=email-drafter
+AGENT_NAME=poem-email-drafter
+DATAGEN_API_KEY=your-datagen-key  # required for DataGen tools (Gmail draft)
+# Get your key at https://datagen.dev/account?tab=api
 ```
 
-### Option B: Use the Default Agent
-
-The default agent is already set up. No changes needed!
-
-### Option C: Create a Custom Agent
-
+Check **DataGen MCP server** in Claude Code:
 ```bash
-./scripts/init-agent.sh my-custom-agent
-# Edit .claude/agents/my-custom-agent.md
+claude mcp list
 ```
+You should see DataGen tools (e.g., `mcp_Gmail_gmail_create_draft`). UI path:  Settings → Developer → MCP Servers → Add MCP Server (use the same values).  
+![Add DataGen MCP](instruction/add-mcp.png)
 
-Then update `.env`:
-```bash
-AGENT_NAME=my-custom-agent
-```
+> Make sure Gmail is connected inside your DataGen account (MCP Servers) so the agent can create the draft.
 
-## Step 3: Test Locally (1 min)
+**Verify DataGen MCP in Claude Code:**
+
+Open Claude Code and ask:
+`List Gmail tools from the Datagen MCP`
+
+
+
+## Step 3: Verify in Claude Code
+
+Open Claude Code and run a quick sanity check to confirm MCP + prompt wiring:
+
+Ask Claude Code:
+
+```Using the poem-email-drafter subagent, draft a poem about New York and create the Gmail draft.```
+
+Expected: Claude lists DataGen MCP Gmail tools (e.g., `mcp_Gmail_gmail_create_draft`) and produces a draft without errors.
+
+## Step 4: Test Locally
 
 ```bash
 # Install dependencies
@@ -74,7 +92,7 @@ You should see:
 ✅ All tests passed!
 ```
 
-## Step 4: Deploy to Railway (2 min)
+## Step 5: Deploy to Railway 
 
 ### Install Railway CLI
 
@@ -103,7 +121,7 @@ The interactive script will:
 3. Upload environment variables from `.env`
 4. Deploy your agent
 
-## Step 5: Test Your Deployed Agent
+## Step 6: Test Your Deployed Agent
 
 ```bash
 # Get your deployment URL
