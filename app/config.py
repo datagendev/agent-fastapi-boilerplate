@@ -55,6 +55,14 @@ class Settings(BaseSettings):
         description="Agent SDK permission mode (safe with non-root Docker user)",
     )
 
+    # CORS settings (optional)
+    cors_enabled: bool = Field(
+        default=False, description="Enable CORS middleware for frontend integrations"
+    )
+    cors_origins: str = Field(
+        default="*", description="Comma-separated list of allowed CORS origins (e.g., 'https://example.com,https://app.example.com')"
+    )
+
     @field_validator("anthropic_api_key")
     @classmethod
     def validate_anthropic_key(cls, v: str) -> str:

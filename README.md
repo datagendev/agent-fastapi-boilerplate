@@ -7,11 +7,12 @@ A production-ready FastAPI boilerplate for deploying Claude Code agents to Railw
 - 🚀 **One-command deployment** to Railway
 - 📝 **Supports both formats**: agent.md (with YAML frontmatter) and prompt.md (plain markdown)
 - 🔧 **Auto-discovery**: Automatically finds your agent file
-- 🔐 **Production-ready**: API key auth, structured logging, error handling
+- 🔐 **Production-ready**: API key auth, structured logging, error handling, health checks
 - 🛠️ **MCP Integration**: Built-in DataGen MCP support
-- 📊 **Background processing**: Non-blocking agent execution
-- 🐳 **Docker-ready**: Non-root user setup for Claude Agent SDK
-- ✅ **Testing included**: Local testing script
+- 📊 **Background processing**: Non-blocking agent execution with streaming support
+- 🐳 **Docker-ready**: Non-root user setup, optimized builds with .dockerignore
+- 🌐 **CORS support**: Configurable CORS for frontend integrations
+- ✅ **Testing included**: Local testing script with comprehensive health checks
 
 ## Quick Start
 
@@ -19,7 +20,7 @@ See [QUICKSTART.md](QUICKSTART.md) for a 5-minute setup guide.
 
 ```bash
 # 1. Clone and setup
-git clone <this-repo> my-agent && cd my-agent
+git clone https://github.com/datagendev/agent-fastapi-boilerplate my-agent && cd my-agent
 cp .env.example .env
 # Edit .env: Add ANTHROPIC_API_KEY
 
@@ -50,30 +51,6 @@ cp examples/email-drafter/agent.md .claude/agents/my-agent.md
 
 ## Architecture
 
-### Directory Structure
-
-```
-agent-fastapi-boilerplate/
-├── app/
-│   ├── main.py          # FastAPI application
-│   ├── config.py        # Configuration management
-│   ├── agent.py         # Agent loading & execution
-│   └── models.py        # Pydantic schemas
-├── .claude/agents/
-│   ├── default.md       # Default agent
-│   └── README.md        # Agent documentation
-├── examples/
-│   ├── poem-email-drafter/  # Simple Gmail poem drafter (great for beginners!)
-│   └── email-drafter/       # Email drafting example
-├── scripts/
-│   ├── deploy.sh        # Deploy to Railway
-│   ├── init-agent.sh    # Create new agent
-│   └── test-local.sh    # Local testing
-├── Dockerfile           # Non-root user setup
-├── railway.json         # Railway configuration
-└── requirements.txt     # Python dependencies
-```
-
 ### How It Works
 
 1. **Agent Discovery**: Automatically finds your agent.md file
@@ -82,26 +59,60 @@ agent-fastapi-boilerplate/
 4. **Background Processing**: Executes agent asynchronously
 5. **MCP Integration**: Auto-configures DataGen MCP if API key present
 
+### Directory Structure
+
+```
+agent-fastapi-boilerplate/
+├── app/                      # Application code
+│   ├── __init__.py
+│   ├── main.py              # FastAPI app (endpoints, middleware)
+│   ├── config.py            # Configuration (env vars)
+│   ├── agent.py             # Agent loading & execution
+│   └── models.py            # Pydantic schemas
+├── .claude/agents/          # Agent definitions
+│   ├── default.md           # Default agent
+│   └── README.md            # Agent documentation
+├── examples/                # Example agents
+│   ├── poem-email-drafter/  # Simple Gmail poem drafter
+│   └── email-drafter/       # Email drafting example
+├── scripts/                 # Deployment scripts
+│   ├── deploy.sh            # Deploy to Railway
+│   ├── init-agent.sh        # Create new agent
+│   └── test-local.sh        # Local testing
+├── .env.example             # Environment template
+├── .gitignore               # Git ignore rules
+├── Dockerfile               # Docker configuration
+├── Procfile                 # Process file for Railway
+├── railway.json             # Railway configuration
+├── requirements.txt         # Python dependencies
+├── runtime.txt              # Python version
+├── README.md                # This file
+├── QUICKSTART.md            # 5-minute setup guide
+└── RAILWAY_DEPLOY.md        # Railway deployment guide
+```
+
 ## Installation
 
 ### Prerequisites
 
 - Python 3.13+
-- Railway CLI (for deployment)
-- Anthropic API key
-- Download Claude Code 
-  ```bash
-  curl -fsSL https://claude.ai/install.sh | bash
-  ```  
-- DataGen MCP access (needed for DataGen-backed agents like email-drafter): get `DATAGEN_API_KEY` at https://datagen.dev/account?tab=api and add the MCP server in Claude Code with  
-  `claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"`
+- Railway CLI (for deployment) - [Installation guide](https://docs.railway.com/guides/cli)
+- Anthropic API key - [Get one here](https://console.anthropic.com/settings/keys)
+- Claude Code desktop app (for local MCP testing) - [Installation](https://claude.ai/install.sh)
+- DataGen API key (optional, for DataGen MCP tools) - [Get key](https://datagen.dev/account?tab=api)
+
+> **Note:** See [QUICKSTART.md](QUICKSTART.md) for detailed setup instructions including MCP server configuration.
 
 ### Setup
 
 ```bash
 # Clone the repository
-git clone <repo-url> my-agent-project
+git clone https://github.com/datagendev/agent-fastapi-boilerplate my-agent-project
 cd my-agent-project
+
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -142,6 +153,8 @@ Create a `.env` file with the following variables:
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `PORT` | Server port | `8000` |
 | `PERMISSION_MODE` | Agent SDK permission mode | `bypassPermissions` |
+| `CORS_ENABLED` | Enable CORS for frontend integrations | `false` |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | `*` |
 
 ### Agent Discovery
 
@@ -238,7 +251,7 @@ Each chunk arrives as `data: <text>\n\n`; completion emits `event: done`.
 
 ### `GET /health`
 
-Health check endpoint.
+Health check endpoint with agent status.
 
 **Response:**
 ```json
@@ -269,6 +282,9 @@ Get agent metadata.
 ### Run Server
 
 ```bash
+# Activate virtual environment (if using one)
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Load environment variables
 source .env
 
@@ -305,21 +321,7 @@ cp .claude/agents/default.md .claude/agents/my-new-agent.md
 
 ### Prerequisites
 
-Install Railway CLI ([Official Docs](https://docs.railway.com/guides/cli)):
-
-```bash
-# Homebrew (macOS)
-brew install railway
-
-# npm (all platforms)
-npm i -g @railway/cli
-
-# Shell script (macOS, Linux, WSL)
-bash <(curl -fsSL cli.new)
-
-# Scoop (Windows)
-scoop install railway
-```
+- Railway CLI installed - see [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md#installation) for installation instructions
 
 ### Quick Deploy
 
@@ -444,6 +446,8 @@ Creates Gmail draft emails with poems about any topic. Perfect for learning the 
 cp examples/poem-email-drafter/agent.md .claude/agents/poem-email-drafter.md
 cp .env.example .env
 # Edit .env: Add ANTHROPIC_API_KEY and DATAGEN_API_KEY
+
+# Test with poem-email-drafter agent
 AGENT_NAME=poem-email-drafter ./scripts/test-local.sh
 ```
 
@@ -464,7 +468,8 @@ Drafts personalized re-engagement emails.
 
 Add DataGen MCP in Claude Code:
 ```bash
-# Get your API key from https://datagen.dev/account?tab=api
+# Use your API key from https://datagen.dev/account?tab=api
+# (Should match DATAGEN_API_KEY in your .env file)
 export DATAGEN_API_KEY=your-datagen-key
 
 # Register the MCP server
@@ -474,13 +479,17 @@ claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-
 claude mcp list
 ```
 
-You should see DataGen tools like `mcp_Neon_run_sql` available. If you prefer the UI flow, use Claude Code Settings → Developer → MCP Servers → Add MCP Server and match the values above.  
-![Add DataGen MCP](instruction/add-mcp.png)
+You should see DataGen tools available (the specific tools depend on which services you've connected in your DataGen account).
+
+**UI Alternative:** Claude Code Settings → Developer → MCP Servers → Add MCP Server (match the values above).
+![Add DataGen MCP to Claude Code](instruction/add-mcp.png)
 
 ```bash
 cp examples/email-drafter/agent.md .claude/agents/email-drafter.md
 cp .env.example .env
 # Edit .env: Add ANTHROPIC_API_KEY and DATAGEN_API_KEY
+
+# Test with email-drafter agent
 AGENT_NAME=email-drafter ./scripts/test-local.sh
 ```
 
@@ -580,37 +589,6 @@ async def custom_middleware(request: Request, call_next):
 - Ensure all environment variables are set in Railway dashboard
 - Verify Dockerfile builds locally: `docker build -t test .`
 - Check runtime.txt has `python-3.13`
-
-## Project Structure
-
-```
-agent-fastapi-boilerplate/
-├── app/                      # Application code
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app (endpoints, middleware)
-│   ├── config.py            # Configuration (env vars)
-│   ├── agent.py             # Agent loading & execution
-│   └── models.py            # Pydantic schemas
-├── .claude/agents/                   # Agent definitions
-│   ├── default.md           # Default agent
-│   └── README.md            # Agent documentation
-├── examples/                 # Example agents
-│   ├── email-drafter/
-│   └── email-drafter/
-├── scripts/                  # Deployment scripts
-│   ├── deploy.sh            # Deploy to Railway
-│   ├── init-agent.sh        # Create new agent
-│   └── test-local.sh        # Local testing
-├── .env.example             # Environment template
-├── .gitignore               # Git ignore rules
-├── Dockerfile               # Docker configuration
-├── Procfile                 # Process file for Railway
-├── railway.json             # Railway configuration
-├── requirements.txt         # Python dependencies
-├── runtime.txt              # Python version
-├── README.md                # This file
-└── QUICKSTART.md            # 5-minute setup guide
-```
 
 ## Contributing
 
