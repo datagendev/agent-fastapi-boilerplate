@@ -109,6 +109,10 @@ agent-fastapi-boilerplate/
 git clone https://github.com/datagendev/agent-fastapi-boilerplate my-agent-project
 cd my-agent-project
 
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -275,6 +279,9 @@ Get agent metadata.
 ### Run Server
 
 ```bash
+# Activate virtual environment (if using one)
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Load environment variables
 source .env
 
