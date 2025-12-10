@@ -32,15 +32,15 @@ DATAGEN_API_KEY=your-datagen-key  # Get from https://datagen.dev/account?tab=api
 AGENT_NAME=poem-email-drafter
 ```
 
-## Step 2: Setup DataGen MCP Server
+## Step 2: Setup DataGen MCP Gateway
 
-Add the DataGen MCP server in Claude Code (must be in project directory):
+Add the DataGen MCP gateway in Claude Code (must be in project directory):
 
 ```bash
 # Make sure you're in the project directory
 cd my-agent-project
 
-# Add MCP server (uses DATAGEN_API_KEY from environment)
+# Add DataGen MCP gateway (uses DATAGEN_API_KEY from environment)
 export DATAGEN_API_KEY=your-datagen-key  # Use your actual key
 claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"
 ```
@@ -49,12 +49,21 @@ Verify installation:
 ```bash
 claude mcp list
 ```
-You should see the DataGen server listed. UI alternative: Settings → Developer → MCP Servers → Add MCP Server (use the same values).
+You should see the DataGen gateway listed.
+![Claude MCP List Output](runtime.png)
+
+
+## Step 3: Add Gmail MCP to DataGen Gateway
+
+DataGen MCP is a gateway that allows you to add multiple MCP servers (like Gmail). To use the email drafter, add Gmail MCP through the DataGen dashboard:
+
+1. Go to [DataGen MCP Servers](https://datagen.dev/account?tab=mcp).
+2. Find "Gmail" in the list of available integrations.
+3. Click "Connect" and follow the authorization flow.
 ![Add DataGen MCP](instruction/add-mcp.png)
+> **Note:** This adds Gmail MCP to your DataGen gateway, allowing the agent to perform actions (like creating drafts) on your behalf.
 
-> **Note:** Make sure Gmail is connected in your DataGen account (under MCP Servers) so the agent can create drafts.
-
-## Step 3: Add the Poem Email Drafter Agent
+## Step 4: Add the Poem Email Drafter Agent
 
 ```bash
 cp examples/poem-email-drafter/agent.md .claude/agents/poem-email-drafter.md
@@ -67,7 +76,7 @@ Open Claude Code and ask:
 
 Expected: Claude lists DataGen MCP Gmail tools like `mcp_Gmail_gmail_create_draft`.
 
-## Step 4: Verify Agent in Claude Code
+## Step 5: Verify Agent in Claude Code
 
 Open Claude Code and run a quick sanity check:
 
@@ -75,7 +84,7 @@ Open Claude Code and run a quick sanity check:
 
 Expected: Claude uses DataGen MCP Gmail tools and produces a draft without errors.
 
-## Step 5: Test Locally
+## Step 6: Test Locally
 
 ```bash
 # Create and activate virtual environment (recommended)
@@ -97,7 +106,7 @@ You should see:
 ✅ All tests passed!
 ```
 
-## Step 6: Deploy to Railway 
+## Step 7: Deploy to Railway 
 
 ### Install Railway CLI
 
@@ -126,7 +135,7 @@ The interactive script will:
 3. Upload environment variables from `.env`
 4. Deploy your agent
 
-## Step 7: Test Your Deployed Agent
+## Step 8: Test Your Deployed Agent
 
 ```bash
 # Get your deployment URL
