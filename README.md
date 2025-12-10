@@ -89,11 +89,10 @@ agent-fastapi-boilerplate/
 - Python 3.13+
 - Railway CLI (for deployment)
 - Anthropic API key
-- Claude desktop with Claude Code enabled (for MCP): install via  
+- Download Claude Code 
   ```bash
   curl -fsSL https://claude.ai/install.sh | bash
   ```  
-  then turn on **Claude Code** under Settings → Developer.
 - DataGen MCP access (needed for DataGen-backed agents like email-drafter): get `DATAGEN_API_KEY` at https://datagen.dev/account?tab=api and add the MCP server in Claude Code with  
   `claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"`
 
