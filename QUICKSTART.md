@@ -11,72 +11,77 @@ Get from clone to deployed in **5 minutes**.
   curl -fsSL https://claude.ai/install.sh | bash
   ```
 - Railway CLI for deployment ([Installation guide](https://docs.railway.com/guides/cli))
-- DataGen MCP access (for the poem email drafter example):
-  - Get `DATAGEN_API_KEY` at https://datagen.dev/account?tab=api
-  - Add the MCP server in Claude Code:  
-    `claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"`
+- DataGen API key (for the poem email drafter example): Get `DATAGEN_API_KEY` at https://datagen.dev/account?tab=api
 
 ## Step 1: Clone and Setup
 
 ```bash
-# Clone the repository (replace with your repo URL)
-git clone <repo-url> my-agent-project
+# Clone the repository
+git clone https://github.com/datagendev/agent-fastapi-boilerplate my-agent-project
 cd my-agent-project
 
 # Create environment file
 cp .env.example .env
 ```
 
-**Edit `.env` and add your API key:**
+**Edit `.env` and add your API keys:**
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
-DATAGEN_API_KEY=your-datagen-key  # required for DataGen MCP tools
+DATAGEN_API_KEY=your-datagen-key  # Get from https://datagen.dev/account?tab=api
 AGENT_NAME=poem-email-drafter
 ```
 
-## Step 2: Add the Poem Email Drafter Agent
+## Step 2: Setup DataGen MCP Server
+
+Add the DataGen MCP server in Claude Code (must be in project directory):
+
+```bash
+# Make sure you're in the project directory
+cd my-agent-project
+
+# Add MCP server (uses DATAGEN_API_KEY from environment)
+export DATAGEN_API_KEY=your-datagen-key  # Use your actual key
+claude mcp add --transport http datagen https://mcp.datagen.dev/mcp --header "x-api-key: $DATAGEN_API_KEY"
+```
+
+Verify installation:
+```bash
+claude mcp list
+```
+You should see the DataGen server listed. UI alternative: Settings → Developer → MCP Servers → Add MCP Server (use the same values).
+![Add DataGen MCP](instruction/add-mcp.png)
+
+> **Note:** Make sure Gmail is connected in your DataGen account (under MCP Servers) so the agent can create drafts.
+
+## Step 3: Add the Poem Email Drafter Agent
 
 ```bash
 cp examples/poem-email-drafter/agent.md .claude/agents/poem-email-drafter.md
 ```
-
-Update `.env`:
-```bash
-AGENT_NAME=poem-email-drafter
-DATAGEN_API_KEY=your-datagen-key  # required for DataGen tools (Gmail draft)
-# Get your key at https://datagen.dev/account?tab=api
-```
-
-Check **DataGen MCP server** in Claude Code:
-```bash
-claude mcp list
-```
-You should see DataGen tools (e.g., `mcp_Gmail_gmail_create_draft`). UI path:  Settings → Developer → MCP Servers → Add MCP Server (use the same values).  
-![Add DataGen MCP](instruction/add-mcp.png)
-
-> Make sure Gmail is connected inside your DataGen account (MCP Servers) so the agent can create the draft.
 
 **Verify DataGen MCP in Claude Code:**
 
 Open Claude Code and ask:
 `List Gmail tools from the Datagen MCP`
 
+Expected: Claude lists DataGen MCP Gmail tools like `mcp_Gmail_gmail_create_draft`.
 
+## Step 4: Verify Agent in Claude Code
 
-## Step 3: Verify in Claude Code
-
-Open Claude Code and run a quick sanity check to confirm MCP + prompt wiring:
-
-Ask Claude Code:
+Open Claude Code and run a quick sanity check:
 
 ```Using the poem-email-drafter subagent, draft a poem about New York and create the Gmail draft.```
 
-Expected: Claude lists DataGen MCP Gmail tools (e.g., `mcp_Gmail_gmail_create_draft`) and produces a draft without errors.
+Expected: Claude uses DataGen MCP Gmail tools and produces a draft without errors.
 
-## Step 4: Test Locally
+## Step 5: Test Locally
 
 ```bash
+# Create and activate virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -92,7 +97,7 @@ You should see:
 ✅ All tests passed!
 ```
 
-## Step 5: Deploy to Railway 
+## Step 6: Deploy to Railway 
 
 ### Install Railway CLI
 
@@ -121,7 +126,7 @@ The interactive script will:
 3. Upload environment variables from `.env`
 4. Deploy your agent
 
-## Step 6: Test Your Deployed Agent
+## Step 7: Test Your Deployed Agent
 
 ```bash
 # Get your deployment URL
