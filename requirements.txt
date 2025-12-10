@@ -1,10 +1,21 @@
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-anthropic>=0.18.0
-claude-agent-sdk>=0.1.0
-datagen-python-sdk
-httpx>=0.25.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-python-frontmatter>=1.0.0
-pyyaml>=6.0.0
+# FastAPI and server
+fastapi~=0.115.0
+uvicorn[standard]~=0.32.0
+
+# Anthropic and agent SDK
+anthropic~=0.39.0
+claude-agent-sdk~=0.1.0
+
+# DataGen SDK
+datagen-python-sdk~=0.1.0
+
+# HTTP client
+httpx~=0.27.0
+
+# Data validation
+pydantic~=2.10.0
+pydantic-settings~=2.6.0
+
+# Markdown parsing
+python-frontmatter~=1.1.0
+pyyaml~=6.0.2

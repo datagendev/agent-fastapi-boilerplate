@@ -5,6 +5,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.agent import agent_executor, log_event
@@ -33,6 +34,18 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# CORS Middleware (if enabled)
+if settings.cors_enabled:
+    origins = [origin.strip() for origin in settings.cors_origins.split(",")]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    log_event("cors_enabled", origins=origins)
 
 
 # Middleware: Request ID injection
@@ -217,12 +230,22 @@ def health():
     """Health check endpoint.
 
     Returns agent configuration and readiness status.
+    Verifies agent is loaded and API key is configured.
     """
+    # Check if agent executor is properly initialized
+    is_ready = (
+        agent_executor is not None
+        and agent_executor.config is not None
+        and settings.anthropic_api_key is not None
+    )
+
+    status = "ok" if is_ready else "error"
+
     return HealthResponse(
-        status="ok",
-        agent_name=agent_executor.config.name,
-        model=agent_executor.model,
-        ready=True,
+        status=status,
+        agent_name=agent_executor.config.name if is_ready else "unknown",
+        model=agent_executor.model if is_ready else "unknown",
+        ready=is_ready,
     )
 
 

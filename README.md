@@ -7,11 +7,12 @@ A production-ready FastAPI boilerplate for deploying Claude Code agents to Railw
 - 🚀 **One-command deployment** to Railway
 - 📝 **Supports both formats**: agent.md (with YAML frontmatter) and prompt.md (plain markdown)
 - 🔧 **Auto-discovery**: Automatically finds your agent file
-- 🔐 **Production-ready**: API key auth, structured logging, error handling
+- 🔐 **Production-ready**: API key auth, structured logging, error handling, health checks
 - 🛠️ **MCP Integration**: Built-in DataGen MCP support
-- 📊 **Background processing**: Non-blocking agent execution
-- 🐳 **Docker-ready**: Non-root user setup for Claude Agent SDK
-- ✅ **Testing included**: Local testing script
+- 📊 **Background processing**: Non-blocking agent execution with streaming support
+- 🐳 **Docker-ready**: Non-root user setup, optimized builds with .dockerignore
+- 🌐 **CORS support**: Configurable CORS for frontend integrations
+- ✅ **Testing included**: Local testing script with comprehensive health checks
 
 ## Quick Start
 
@@ -152,6 +153,8 @@ Create a `.env` file with the following variables:
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `PORT` | Server port | `8000` |
 | `PERMISSION_MODE` | Agent SDK permission mode | `bypassPermissions` |
+| `CORS_ENABLED` | Enable CORS for frontend integrations | `false` |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | `*` |
 
 ### Agent Discovery
 
@@ -248,7 +251,7 @@ Each chunk arrives as `data: <text>\n\n`; completion emits `event: done`.
 
 ### `GET /health`
 
-Health check endpoint.
+Health check endpoint with agent status.
 
 **Response:**
 ```json
